@@ -6,6 +6,7 @@ class NoteNode {
   List<String> childIds;
   final DateTime createdAt;
   DateTime updatedAt;
+  DateTime? lastOpenedAt;
   int position;
   bool isExpanded; // Persists sidebar expand/collapse state
 
@@ -17,11 +18,14 @@ class NoteNode {
     List<String>? childIds,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.lastOpenedAt,
     this.position = 0,
     this.isExpanded = false,
   })  : childIds = childIds ?? [],
         createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+        updatedAt = updatedAt ?? DateTime.now() {
+    lastOpenedAt ??= createdAt;
+  }
 
   // Create a copy with modified values
   NoteNode copyWith({
@@ -32,6 +36,7 @@ class NoteNode {
     List<String>? childIds,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? lastOpenedAt,
     int? position,
     bool? isExpanded,
   }) {
@@ -43,6 +48,7 @@ class NoteNode {
       childIds: childIds ?? List.from(this.childIds),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
       position: position ?? this.position,
       isExpanded: isExpanded ?? this.isExpanded,
     );
@@ -58,6 +64,7 @@ class NoteNode {
       'childIds': childIds,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'lastOpenedAt': lastOpenedAt?.toIso8601String(),
       'position': position,
       'isExpanded': isExpanded,
     };
@@ -73,6 +80,7 @@ class NoteNode {
       childIds: (json['childIds'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.now(),
+      lastOpenedAt: json['lastOpenedAt'] != null ? DateTime.parse(json['lastOpenedAt'] as String) : null,
       position: json['position'] as int? ?? 0,
       isExpanded: json['isExpanded'] as bool? ?? false,
     );

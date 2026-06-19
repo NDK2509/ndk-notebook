@@ -46,6 +46,21 @@ class NoteTreeItem extends StatefulWidget {
 class _NoteTreeItemState extends State<NoteTreeItem> {
   bool _isHovering = false;
 
+  bool get _isFreeze {
+    final lastTime = widget.node.lastOpenedAt ?? widget.node.createdAt;
+    return DateTime.now().difference(lastTime).inMinutes >= 15;
+  }
+
+  bool get _isAncient {
+    return widget.node.childIds.length >= 3;
+  }
+
+  bool get _isSprout {
+    final isNew = DateTime.now().difference(widget.node.createdAt).inHours < 1;
+    final isShort = widget.node.content.length <= 50;
+    return isNew && isShort;
+  }
+
   @override
   Widget build(BuildContext context) {
     final notesProvider = context.watch<NotesProvider>();
@@ -55,100 +70,131 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
 
     final childrenNodes = notesProvider.getChildNotes(widget.node.id);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              notesProvider.selectNote(widget.node.id);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeInOut,
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              padding: EdgeInsets.only(
-                left: (widget.depth * 12.0) + 4.0, // Indent by depth
-                right: 8.0,
-                top: 6.0,
-                bottom: 6.0,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
-                    : (_isHovering
-                        ? Theme.of(context).colorScheme.onSurface.withOpacity(0.03)
-                        : Colors.transparent),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-                      : Colors.transparent,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Collapse / Expand Arrow Button
-                  GestureDetector(
-                    onTap: () {
-                      notesProvider.toggleNodeExpanded(widget.node.id);
-                    },
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      alignment: Alignment.center,
-                      child: hasChildren
-                          ? AnimatedRotation(
-                              turns: widget.node.isExpanded ? 0.25 : 0,
-                              duration: const Duration(milliseconds: 150),
-                              child: Icon(
-                                Icons.chevron_right_rounded,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                              ),
-                            )
-                          : Container(
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  
-                  // Note icon
-                  Icon(
-                    Icons.description_outlined,
-                    size: 15,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                  const SizedBox(width: 8),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Lifecycle classification
+    final freeze = _isFreeze;
+    final ancient = _isAncient;
+    final sprout = _isSprout;
 
-                  // Title Text
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+    IconData noteIcon = Icons.description_outlined;
+    Color iconColor;
+    
+    if (freeze) {
+      noteIcon = Icons.ac_unit_rounded;
+      iconColor = isDark ? Colors.lightBlueAccent : Colors.blue;
+    } else if (ancient) {
+      noteIcon = Icons.park_rounded;
+      iconColor = isDark ? Colors.tealAccent : Colors.teal;
+    } else if (sprout) {
+      noteIcon = Icons.eco_rounded;
+      iconColor = isDark ? Colors.lightGreenAccent : Colors.green;
+    } else {
+      iconColor = isSelected
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+    }
+
+    final double opacity = freeze ? 0.55 : 1.0;
+    final double paddingVertical = freeze ? 3.0 : 6.0;
+    final double fontSize = freeze ? 11.5 : 13.0;
+    final double iconSize = freeze ? 13.0 : 15.0;
+    final double arrowIconSize = freeze ? 13.0 : 16.0;
+
+    return Opacity(
+      opacity: opacity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MouseRegion(
+            onEnter: (_) => setState(() => _isHovering = true),
+            onExit: (_) => setState(() => _isHovering = false),
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                notesProvider.selectNote(widget.node.id);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeInOut,
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: EdgeInsets.only(
+                  left: (widget.depth * 12.0) + 4.0, // Indent by depth
+                  right: 8.0,
+                  top: paddingVertical,
+                  bottom: paddingVertical,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+                      : (_isHovering
+                          ? Theme.of(context).colorScheme.onSurface.withOpacity(0.03)
+                          : Colors.transparent),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+                        : Colors.transparent,
+                    width: 1,
                   ),
+                ),
+                child: Row(
+                  children: [
+                    // Collapse / Expand Arrow Button
+                    GestureDetector(
+                      onTap: () {
+                        notesProvider.toggleNodeExpanded(widget.node.id);
+                      },
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        alignment: Alignment.center,
+                        child: hasChildren
+                            ? AnimatedRotation(
+                                turns: widget.node.isExpanded ? 0.25 : 0,
+                                duration: const Duration(milliseconds: 150),
+                                child: Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: arrowIconSize,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                                ),
+                              )
+                            : Container(
+                                width: freeze ? 3 : 4,
+                                height: freeze ? 3 : 4,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    
+                    // Note icon
+                    Icon(
+                      noteIcon,
+                      size: iconSize,
+                      color: iconColor,
+                    ),
+                    const SizedBox(width: 8),
+  
+                    // Title Text
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
 
                   // Hover action buttons (Add Child and Delete)
                   if (_isHovering || isSelected)
@@ -163,7 +209,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                               notesProvider.createSubNote(widget.node.id);
                             },
                             child: Padding(
-                              padding: const EdgeInsets.all(4.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                               child: Icon(
                                 Icons.add_box_outlined,
                                 size: 14,
@@ -200,7 +246,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                               );
                             },
                             child: const Padding(
-                              padding: EdgeInsets.all(4.0),
+                              padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                               child: Icon(
                                 Icons.delete_outline_rounded,
                                 size: 14,
@@ -229,6 +275,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
             ),
           ),
       ],
-    );
-  }
+    ),
+  );
+}
 }

@@ -33,6 +33,11 @@ class NotesProvider extends ChangeNotifier {
       final roots = getRootNotes();
       if (roots.isNotEmpty) {
         _selectedNoteId = roots.first.id;
+        final note = _notes[_selectedNoteId];
+        if (note != null) {
+          note.lastOpenedAt = DateTime.now();
+          await _storageService.saveNotes(_notes);
+        }
       }
     }
 
@@ -44,7 +49,15 @@ class NotesProvider extends ChangeNotifier {
   void selectNote(String? id) {
     if (id == null || _notes.containsKey(id)) {
       _selectedNoteId = id;
-      notifyListeners();
+      if (id != null) {
+        final note = _notes[id];
+        if (note != null) {
+          note.lastOpenedAt = DateTime.now();
+          _saveAndNotify();
+        }
+      } else {
+        notifyListeners();
+      }
     }
   }
 
