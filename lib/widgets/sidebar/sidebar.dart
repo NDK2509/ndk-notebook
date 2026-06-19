@@ -155,6 +155,72 @@ class _SidebarState extends State<Sidebar> {
               ),
             ),
 
+            const Divider(),
+
+            // Trash Section
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  notesProvider.selectTrash();
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: notesProvider.isTrashSelected
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: notesProvider.isTrashSelected
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+                          : Colors.transparent,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: notesProvider.isTrashSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Trash',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: notesProvider.isTrashSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                        ),
+                      ),
+                      const Spacer(),
+                      // Count of items in trash
+                      if (notesProvider.getTrashNotesCount() > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${notesProvider.getTrashNotesCount()}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
             // Sidebar Footer
             const Divider(),
             Padding(

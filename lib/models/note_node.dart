@@ -7,6 +7,8 @@ class NoteNode {
   final DateTime createdAt;
   DateTime updatedAt;
   DateTime? lastOpenedAt;
+  bool isDeleted;
+  DateTime? deletedAt;
   int position;
   bool isExpanded; // Persists sidebar expand/collapse state
 
@@ -19,6 +21,8 @@ class NoteNode {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.lastOpenedAt,
+    this.isDeleted = false,
+    this.deletedAt,
     this.position = 0,
     this.isExpanded = false,
   })  : childIds = childIds ?? [],
@@ -37,6 +41,8 @@ class NoteNode {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastOpenedAt,
+    bool? isDeleted,
+    DateTime? deletedAt,
     int? position,
     bool? isExpanded,
   }) {
@@ -49,6 +55,8 @@ class NoteNode {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
       position: position ?? this.position,
       isExpanded: isExpanded ?? this.isExpanded,
     );
@@ -65,6 +73,8 @@ class NoteNode {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'lastOpenedAt': lastOpenedAt?.toIso8601String(),
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
       'position': position,
       'isExpanded': isExpanded,
     };
@@ -81,6 +91,8 @@ class NoteNode {
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.now(),
       lastOpenedAt: json['lastOpenedAt'] != null ? DateTime.parse(json['lastOpenedAt'] as String) : null,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+      deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt'] as String) : null,
       position: json['position'] as int? ?? 0,
       isExpanded: json['isExpanded'] as bool? ?? false,
     );

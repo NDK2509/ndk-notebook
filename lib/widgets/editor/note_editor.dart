@@ -6,6 +6,8 @@ import '../../providers/notes_provider.dart';
 import 'breadcrumbs.dart';
 import 'subnodes_grid.dart';
 
+import 'trash_view.dart';
+
 class NoteEditor extends StatefulWidget {
   const NoteEditor({super.key});
 
@@ -126,6 +128,10 @@ class _NoteEditorState extends State<NoteEditor> {
   Widget build(BuildContext context) {
     final notesProvider = context.watch<NotesProvider>();
     final note = notesProvider.selectedNote;
+
+    if (notesProvider.isTrashSelected) {
+      return const TrashView();
+    }
 
     if (note == null) {
       return Center(

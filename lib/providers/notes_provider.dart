@@ -12,12 +12,14 @@ class NotesProvider extends ChangeNotifier {
   String? _selectedNoteId;
   String _searchQuery = '';
   bool _isLoading = false;
+  bool _isTrashSelected = false;
   Timer? _debounceSaveTimer;
 
   Map<String, NoteNode> get notes => _notes;
   String? get selectedNoteId => _selectedNoteId;
   String get searchQuery => _searchQuery;
   bool get isLoading => _isLoading;
+  bool get isTrashSelected => _isTrashSelected;
 
   NoteNode? get selectedNote => _selectedNoteId != null ? _notes[_selectedNoteId] : null;
 
@@ -27,6 +29,9 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
 
     _notes = await _storageService.loadNotes();
+    
+    // Auto-clean up expired notes from trash
+    _cleanExpiredTrashNotes();
     
     // Select first root note if available, otherwise stay null
     if (_notes.isNotEmpty) {
@@ -49,6 +54,7 @@ class NotesProvider extends ChangeNotifier {
   void selectNote(String? id) {
     if (id == null || _notes.containsKey(id)) {
       _selectedNoteId = id;
+      _isTrashSelected = false;
       if (id != null) {
         final note = _notes[id];
         if (note != null) {
@@ -75,6 +81,7 @@ class NotesProvider extends ChangeNotifier {
 
     _notes[newId] = newNode;
     _selectedNoteId = newId;
+    _isTrashSelected = false;
 
     _saveAndNotify();
     return newNode;
@@ -104,9 +111,11 @@ class NotesProvider extends ChangeNotifier {
     parentNode.isExpanded = true; // Auto-expand parent when adding child
 
     _selectedNoteId = newId;
+    _isTrashSelected = false;
     _saveAndNotify();
     return newNode;
   }
+
 
   // Update Note Title
   void updateNoteTitle(String id, String title) {
@@ -128,18 +137,7 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
-  // Recursive deletion helper
-  void _deleteNodeRecursive(String id, Map<String, NoteNode> map) {
-    final node = map[id];
-    if (node == null) return;
-
-    for (final childId in List.from(node.childIds)) {
-      _deleteNodeRecursive(childId, map);
-    }
-    map.remove(id);
-  }
-
-  // Delete a Note and its descendants
+  // Soft delete a note and its descendants
   void deleteNote(String id) {
     final note = _notes[id];
     if (note == null) return;
@@ -153,12 +151,12 @@ class NotesProvider extends ChangeNotifier {
       parent.updatedAt = DateTime.now();
     }
 
-    // Recursively delete node and all subnodes
-    _deleteNodeRecursive(id, _notes);
+    // Recursively soft-delete node and all subnodes
+    _softDeleteNodeRecursive(id);
 
     // If active note was deleted, fallback to parent, or first root, or null
     if (_selectedNoteId == id) {
-      if (parentId != null && _notes.containsKey(parentId)) {
+      if (parentId != null && _notes.containsKey(parentId) && !_notes[parentId]!.isDeleted) {
         _selectedNoteId = parentId;
       } else {
         final roots = getRootNotes();
@@ -167,6 +165,137 @@ class NotesProvider extends ChangeNotifier {
     }
 
     _saveAndNotify();
+  }
+
+  void _softDeleteNodeRecursive(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    note.isDeleted = true;
+    note.deletedAt = DateTime.now();
+
+    for (final childId in note.childIds) {
+      _softDeleteNodeRecursive(childId);
+    }
+  }
+
+  // Restore a note from Trash
+  void restoreNote(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    final parentId = note.parentId;
+    if (parentId != null) {
+      if (_notes.containsKey(parentId) && !_notes[parentId]!.isDeleted) {
+        final parent = _notes[parentId]!;
+        if (!parent.childIds.contains(id)) {
+          parent.childIds.add(id);
+          parent.updatedAt = DateTime.now();
+        }
+      } else {
+        note.parentId = null; // parent was permanently deleted or is still in trash
+      }
+    }
+
+    _restoreNodeRecursive(id);
+    
+    // Select the restored note
+    _selectedNoteId = id;
+    _isTrashSelected = false;
+
+    _saveAndNotify();
+  }
+
+  void _restoreNodeRecursive(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    note.isDeleted = false;
+    note.deletedAt = null;
+
+    for (final childId in note.childIds) {
+      _restoreNodeRecursive(childId);
+    }
+  }
+
+  // Recursive deletion helper
+  void _deleteNodeRecursive(String id, Map<String, NoteNode> map) {
+    final node = map[id];
+    if (node == null) return;
+
+    for (final childId in List.from(node.childIds)) {
+      _deleteNodeRecursive(childId, map);
+    }
+    map.remove(id);
+  }
+
+  // Delete a note permanently (hard delete)
+  void permanentlyDeleteNote(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    final parentId = note.parentId;
+    
+    // Remove reference from parent if parent is still alive and active
+    if (parentId != null && _notes.containsKey(parentId)) {
+      _notes[parentId]!.childIds.remove(id);
+      _notes[parentId]!.updatedAt = DateTime.now();
+    }
+
+    // Recursively delete node and all subnodes from memory map
+    _deleteNodeRecursive(id, _notes);
+
+    _saveAndNotify();
+  }
+
+  // Empty the Trash
+  void emptyTrash() {
+    _notes.removeWhere((key, note) => note.isDeleted);
+    _saveAndNotify();
+  }
+
+  // Select Trash category
+  void selectTrash() {
+    _isTrashSelected = true;
+    _selectedNoteId = null;
+    notifyListeners();
+  }
+
+  // Retrieve trash notes
+  List<NoteNode> getTrashNotes() {
+    return _notes.values.where((note) {
+      if (!note.isDeleted) return false;
+      if (note.parentId == null) return true;
+      final parent = _notes[note.parentId];
+      return parent == null || !parent.isDeleted;
+    }).toList()
+      ..sort((a, b) => (b.deletedAt ?? b.updatedAt).compareTo(a.deletedAt ?? a.updatedAt));
+  }
+
+  int getTrashNotesCount() {
+    return _notes.values.where((note) => note.isDeleted && (note.parentId == null || _notes[note.parentId]?.isDeleted != true)).length;
+  }
+
+  // Auto-clean up deleted notes older than 30 days
+  void _cleanExpiredTrashNotes() {
+    final now = DateTime.now();
+    final toRemove = <String>[];
+
+    _notes.forEach((id, note) {
+      if (note.isDeleted) {
+        final deletedTime = note.deletedAt ?? note.updatedAt;
+        if (now.difference(deletedTime).inDays >= 30) {
+          toRemove.add(id);
+        }
+      }
+    });
+
+    if (toRemove.isNotEmpty) {
+      for (final id in toRemove) {
+        _notes.remove(id);
+      }
+      _storageService.saveNotes(_notes);
+    }
   }
 
   // Move / Re-parent a Note in the hierarchy
@@ -225,7 +354,7 @@ class NotesProvider extends ChangeNotifier {
 
   // Get only top-level (root) notes
   List<NoteNode> getRootNotes() {
-    final roots = _notes.values.where((node) => node.parentId == null).toList();
+    final roots = _notes.values.where((node) => node.parentId == null && !node.isDeleted).toList();
     roots.sort((a, b) => a.position.compareTo(b.position));
     return roots;
   }
@@ -237,7 +366,7 @@ class NotesProvider extends ChangeNotifier {
 
     final children = parent.childIds
         .map((id) => _notes[id])
-        .where((node) => node != null)
+        .where((node) => node != null && !node!.isDeleted)
         .cast<NoteNode>()
         .toList();
     
@@ -246,7 +375,7 @@ class NotesProvider extends ChangeNotifier {
     return children;
   }
 
-  // Find Breadcrumbs: path from root to node
+  // Find Breadcrumbs: path from root to note
   List<NoteNode> getBreadcrumbs(String noteId) {
     final path = <NoteNode>[];
     String? currentId = noteId;
@@ -274,6 +403,7 @@ class NotesProvider extends ChangeNotifier {
 
     final query = _searchQuery.toLowerCase();
     return _notes.values.where((node) {
+      if (node.isDeleted) return false;
       return node.title.toLowerCase().contains(query) ||
              node.content.toLowerCase().contains(query);
     }).toList();

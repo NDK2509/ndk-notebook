@@ -35,14 +35,34 @@ void main() {
 
     test('NoteNode copyWith modification check', () {
       final node = NoteNode(id: 'original-id', title: 'Original Title');
-      final updatedNode = node.copyWith(title: 'New Title', isExpanded: true);
+      final updatedNode = node.copyWith(title: 'New Title', isExpanded: true, isDeleted: true);
 
       expect(updatedNode.id, 'original-id');
       expect(updatedNode.title, 'New Title');
       expect(updatedNode.isExpanded, true);
+      expect(updatedNode.isDeleted, true);
       // Verify original is untouched
       expect(node.title, 'Original Title');
       expect(node.isExpanded, false);
+      expect(node.isDeleted, false);
+    });
+
+    test('NoteNode serialization with isDeleted and deletedAt', () {
+      final date = DateTime.now();
+      final node = NoteNode(
+        id: 'test-trash-id',
+        title: 'Trash Note',
+        isDeleted: true,
+        deletedAt: date,
+      );
+
+      final json = node.toJson();
+      expect(json['isDeleted'], true);
+      expect(json['deletedAt'], date.toIso8601String());
+
+      final decoded = NoteNode.fromJson(json);
+      expect(decoded.isDeleted, true);
+      expect(decoded.deletedAt, date);
     });
   });
 }
