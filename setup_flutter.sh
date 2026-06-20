@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-SDK_DIR="/home/kynguyen/flutter-sdk"
+SDK_DIR="$HOME/flutter-sdk"
 
 echo "=== 1. Cloning Flutter SDK ==="
 if [ ! -d "$SDK_DIR" ]; then

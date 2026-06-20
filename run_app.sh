@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to the Flutter SDK we installed
-FLUTTER_BIN="/home/kynguyen/flutter-sdk/bin/flutter"
+FLUTTER_BIN="$HOME/flutter-sdk/bin/flutter"
 
 echo "=========================================="
 echo "         NDK Notebook App Runner          "
