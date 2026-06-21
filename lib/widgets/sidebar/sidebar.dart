@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/notes_provider.dart';
 import 'note_tree_view.dart';
+import 'note_card_view.dart';
 
 class Sidebar extends StatefulWidget {
   const Sidebar({super.key});
@@ -12,6 +13,7 @@ class Sidebar extends StatefulWidget {
 
 class _SidebarState extends State<Sidebar> {
   final TextEditingController _searchController = TextEditingController();
+  bool _isCardView = false;
 
   @override
   void dispose() {
@@ -39,14 +41,14 @@ class _SidebarState extends State<Sidebar> {
       child: SafeArea(
         child: Column(
           children: [
-            // Sidebar Header (App Name & New Note Button)
+            // Sidebar Header (App Name & Action Buttons)
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(12, 14, 8, 14),
               child: Row(
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 26,
+                    height: 26,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -60,28 +62,34 @@ class _SidebarState extends State<Sidebar> {
                     ),
                     child: const Icon(
                       Icons.account_tree_rounded,
-                      size: 16,
+                      size: 14,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'NDK Notebook',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          letterSpacing: -0.5,
-                        ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'NDK Notebook',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            letterSpacing: -0.5,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 4),
                   // Sort menu button
                   PopupMenuButton<String>(
                     tooltip: 'Sort Notes',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                     icon: Icon(
                       Icons.sort_rounded,
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      size: 20,
+                      size: 18,
                     ),
+                    iconSize: 18,
                     onSelected: (String value) {
                       notesProvider.sortAllNotes(value);
                     },
@@ -140,20 +148,46 @@ class _SidebarState extends State<Sidebar> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 4),
-                  // Create Root Note button
-                  Tooltip(
-                    message: 'New Root Note',
-                    child: IconButton(
-                      onPressed: () {
-                        notesProvider.createRootNote();
+                  // View mode toggle
+                  IconButton(
+                    tooltip: _isCardView ? 'Tree View' : 'Card View',
+                    onPressed: () {
+                      setState(() => _isCardView = !_isCardView);
+                    },
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder: (child, animation) {
+                        return RotationTransition(
+                          turns: Tween(begin: 0.75, end: 1.0).animate(animation),
+                          child: FadeTransition(opacity: animation, child: child),
+                        );
                       },
-                      icon: Icon(
-                        Icons.add_circle_outline_rounded,
-                        color: Theme.of(context).colorScheme.primary,
+                      child: Icon(
+                        _isCardView
+                            ? Icons.account_tree_rounded
+                            : Icons.dashboard_rounded,
+                        key: ValueKey(_isCardView),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        size: 17,
                       ),
-                      iconSize: 22,
                     ),
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                  ),
+                  // Create Root Note button
+                  IconButton(
+                    tooltip: 'New Root Note',
+                    onPressed: () {
+                      notesProvider.createRootNote();
+                    },
+                    icon: Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                   ),
                 ],
               ),
@@ -213,12 +247,39 @@ class _SidebarState extends State<Sidebar> {
             ),
             const SizedBox(height: 12),
 
-            // Note tree contents / Search results
+            // View mode label
+            if (!isSearching)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 6.0),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isCardView ? Icons.dashboard_rounded : Icons.account_tree_rounded,
+                      size: 11,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _isCardView ? 'Card View' : 'Tree View',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Note tree / card contents / Search results
             Expanded(
               child: SingleChildScrollView(
                 child: isSearching
                     ? _buildSearchResults(context, searchResults, notesProvider)
-                    : _buildTreeNotes(rootNotes),
+                    : (_isCardView
+                        ? const NoteCardView()
+                        : _buildTreeNotes(rootNotes)),
               ),
             ),
 
