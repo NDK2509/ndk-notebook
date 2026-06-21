@@ -74,6 +74,73 @@ class _SidebarState extends State<Sidebar> {
                         ),
                   ),
                   const Spacer(),
+                  // Sort menu button
+                  PopupMenuButton<String>(
+                    tooltip: 'Sort Notes',
+                    icon: Icon(
+                      Icons.sort_rounded,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      size: 20,
+                    ),
+                    onSelected: (String value) {
+                      notesProvider.sortAllNotes(value);
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'title_asc',
+                        child: Row(
+                          children: [
+                            Icon(Icons.sort_by_alpha_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('Alphabetical (A-Z)', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'title_desc',
+                        child: Row(
+                          children: [
+                            Icon(Icons.sort_by_alpha_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('Alphabetical (Z-A)', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem<String>(
+                        value: 'created_newest',
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('Created (Newest First)', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'created_oldest',
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('Created (Oldest First)', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem<String>(
+                        value: 'updated',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_calendar_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('Recently Updated', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 4),
                   // Create Root Note button
                   Tooltip(
                     message: 'New Root Note',

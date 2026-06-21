@@ -6,24 +6,57 @@ import '../../providers/notes_provider.dart';
 class NoteTreeView extends StatelessWidget {
   final List<NoteNode> nodes;
   final int depth;
+  final String? parentId;
 
   const NoteTreeView({
     super.key,
     required this.nodes,
     this.depth = 0,
+    this.parentId,
   });
 
   @override
   Widget build(BuildContext context) {
     if (nodes.isEmpty) return const SizedBox.shrink();
 
-    return ListView.builder(
+    final notesProvider = context.read<NotesProvider>();
+
+    return ReorderableListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      proxyDecorator: (child, index, animation) {
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) {
+            final elevation = Tween<double>(begin: 0, end: 6).evaluate(animation);
+            final scale = Tween<double>(begin: 1.0, end: 1.02).evaluate(animation);
+            return Transform.scale(
+              scale: scale,
+              child: Material(
+                elevation: elevation,
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                child: child,
+              ),
+            );
+          },
+          child: child,
+        );
+      },
+      onReorder: (oldIndex, newIndex) {
+        notesProvider.reorderSiblingNotes(parentId, oldIndex, newIndex);
+      },
       itemCount: nodes.length,
       itemBuilder: (context, index) {
         final node = nodes[index];
-        return NoteTreeItem(node: node, depth: depth);
+        return NoteTreeItem(
+          key: ValueKey(node.id),
+          node: node,
+          depth: depth,
+          dragIndex: index,
+        );
       },
     );
   }
@@ -32,11 +65,13 @@ class NoteTreeView extends StatelessWidget {
 class NoteTreeItem extends StatefulWidget {
   final NoteNode node;
   final int depth;
+  final int dragIndex;
 
   const NoteTreeItem({
     super.key,
     required this.node,
     required this.depth,
+    required this.dragIndex,
   });
 
   @override
@@ -141,6 +176,23 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                 ),
                 child: Row(
                   children: [
+                    // Drag handle — visible on hover
+                    if (_isHovering || isSelected)
+                      ReorderableDragStartListener(
+                        index: widget.dragIndex,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.grab,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 4.0),
+                            child: Icon(
+                              Icons.drag_indicator_rounded,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                      ),
+
                     // Collapse / Expand Arrow Button
                     GestureDetector(
                       onTap: () {
@@ -209,7 +261,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                               notesProvider.createSubNote(widget.node.id);
                             },
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 2.0),
                               child: Icon(
                                 Icons.add_box_outlined,
                                 size: 14,
@@ -246,7 +298,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                               );
                             },
                             child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                              padding: EdgeInsets.symmetric(horizontal: 3.0, vertical: 2.0),
                               child: Icon(
                                 Icons.delete_outline_rounded,
                                 size: 14,
@@ -272,6 +324,7 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
             child: NoteTreeView(
               nodes: childrenNodes,
               depth: widget.depth + 1,
+              parentId: widget.node.id,
             ),
           ),
       ],

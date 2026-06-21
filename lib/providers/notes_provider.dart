@@ -483,6 +483,109 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
+  // Reorder sibling notes via drag-and-drop
+  void reorderSiblingNotes(String? parentId, int oldIndex, int newIndex) {
+    // Get the sibling list sorted by position
+    final siblings = parentId == null ? getRootNotes() : getChildNotes(parentId);
+    if (oldIndex < 0 || oldIndex >= siblings.length) return;
+
+    // ReorderableListView passes newIndex adjusted for removal,
+    // so adjust if moving downward
+    if (newIndex > oldIndex) newIndex--;
+    if (newIndex == oldIndex) return;
+    if (newIndex < 0 || newIndex >= siblings.length) return;
+
+    // Remove the dragged node and insert at new position
+    final movedNode = siblings.removeAt(oldIndex);
+    siblings.insert(newIndex, movedNode);
+
+    // Re-assign position values to all siblings
+    for (int i = 0; i < siblings.length; i++) {
+      siblings[i].position = i;
+    }
+
+    _saveAndNotify();
+  }
+
+  // Move a note up among its siblings
+  void moveNoteUp(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    final siblings = note.parentId == null ? getRootNotes() : getChildNotes(note.parentId!);
+    
+    // Normalize positions to guarantee consecutive ordering
+    for (int i = 0; i < siblings.length; i++) {
+      siblings[i].position = i;
+    }
+
+    final index = siblings.indexWhere((n) => n.id == id);
+    if (index > 0) {
+      final prevNote = siblings[index - 1];
+      note.position = index - 1;
+      prevNote.position = index;
+      _saveAndNotify();
+    }
+  }
+
+  // Move a note down among its siblings
+  void moveNoteDown(String id) {
+    final note = _notes[id];
+    if (note == null) return;
+
+    final siblings = note.parentId == null ? getRootNotes() : getChildNotes(note.parentId!);
+    
+    // Normalize positions to guarantee consecutive ordering
+    for (int i = 0; i < siblings.length; i++) {
+      siblings[i].position = i;
+    }
+
+    final index = siblings.indexWhere((n) => n.id == id);
+    if (index != -1 && index < siblings.length - 1) {
+      final nextNote = siblings[index + 1];
+      note.position = index + 1;
+      nextNote.position = index;
+      _saveAndNotify();
+    }
+  }
+
+  // Sort notes globally (all root levels and child levels)
+  void sortAllNotes(String sortBy) {
+    // Helper to sort a list of nodes and update their position values
+    void sortList(List<NoteNode> list) {
+      if (sortBy == 'title_asc') {
+        list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      } else if (sortBy == 'title_desc') {
+        list.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+      } else if (sortBy == 'created_newest') {
+        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } else if (sortBy == 'created_oldest') {
+        list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      } else if (sortBy == 'updated') {
+        list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      }
+      
+      // Assign new consecutive position IDs based on sorting
+      for (int i = 0; i < list.length; i++) {
+        list[i].position = i;
+      }
+    }
+
+    // 1. Sort root notes
+    final roots = getRootNotes();
+    sortList(roots);
+
+    // 2. Sort children of each note recursively
+    for (final note in _notes.values) {
+      if (note.childIds.isNotEmpty) {
+        final children = getChildNotes(note.id);
+        sortList(children);
+      }
+    }
+
+    _saveAndNotify();
+  }
+
   // Debounce saving notes to disk
   void _saveAndNotify({bool debounced = false}) {
     notifyListeners();
