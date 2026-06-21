@@ -11,6 +11,8 @@ class NoteNode {
   DateTime? deletedAt;
   int position;
   bool isExpanded; // Persists sidebar expand/collapse state
+  DateTime? reminderDateTime;
+  bool isReminderTriggered;
 
   NoteNode({
     required this.id,
@@ -25,6 +27,8 @@ class NoteNode {
     this.deletedAt,
     this.position = 0,
     this.isExpanded = false,
+    this.reminderDateTime,
+    this.isReminderTriggered = false,
   })  : childIds = childIds ?? [],
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now() {
@@ -45,6 +49,8 @@ class NoteNode {
     DateTime? deletedAt,
     int? position,
     bool? isExpanded,
+    DateTime? reminderDateTime,
+    bool? isReminderTriggered,
   }) {
     return NoteNode(
       id: id ?? this.id,
@@ -59,6 +65,8 @@ class NoteNode {
       deletedAt: deletedAt ?? this.deletedAt,
       position: position ?? this.position,
       isExpanded: isExpanded ?? this.isExpanded,
+      reminderDateTime: reminderDateTime ?? this.reminderDateTime,
+      isReminderTriggered: isReminderTriggered ?? this.isReminderTriggered,
     );
   }
 
@@ -77,6 +85,8 @@ class NoteNode {
       'deletedAt': deletedAt?.toIso8601String(),
       'position': position,
       'isExpanded': isExpanded,
+      'reminderDateTime': reminderDateTime?.toIso8601String(),
+      'isReminderTriggered': isReminderTriggered,
     };
   }
 
@@ -95,6 +105,8 @@ class NoteNode {
       deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt'] as String) : null,
       position: json['position'] as int? ?? 0,
       isExpanded: json['isExpanded'] as bool? ?? false,
+      reminderDateTime: json['reminderDateTime'] != null ? DateTime.parse(json['reminderDateTime'] as String) : null,
+      isReminderTriggered: json['isReminderTriggered'] as bool? ?? false,
     );
   }
 }

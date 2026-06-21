@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/notes_provider.dart';
+import '../../models/note_node.dart';
 import 'breadcrumbs.dart';
 import 'subnodes_grid.dart';
 
@@ -236,6 +237,8 @@ class _NoteEditorState extends State<NoteEditor> {
                         ),
                       ),
                       const SizedBox(width: 12),
+                      _buildReminderButton(context, notesProvider, note),
+                      const SizedBox(width: 12),
 
                       // Edit / Preview Toggle Buttons
                       Container(
@@ -424,5 +427,127 @@ class _NoteEditorState extends State<NoteEditor> {
         ],
       ),
     );
+  }
+
+  Widget _buildReminderButton(BuildContext context, NotesProvider provider, NoteNode note) {
+    final hasReminder = note.reminderDateTime != null;
+    final isPast = hasReminder && note.reminderDateTime!.isBefore(DateTime.now());
+    
+    String label = 'Set Reminder';
+    if (hasReminder) {
+      label = DateFormat('MMM dd, hh:mm a').format(note.reminderDateTime!);
+      if (note.isReminderTriggered) {
+        label = 'Triggered';
+      }
+    }
+
+    final Color buttonColor = hasReminder 
+        ? (note.isReminderTriggered ? Colors.grey : Colors.amber)
+        : Theme.of(context).colorScheme.primary;
+
+    return OutlinedButton.icon(
+      onPressed: () {
+        if (hasReminder) {
+          _showReminderOptionsMenu(context, provider, note);
+        } else {
+          _selectReminderDateTime(context, provider, note);
+        }
+      },
+      icon: Icon(
+        hasReminder 
+            ? (note.isReminderTriggered ? Icons.notifications_none_rounded : Icons.notifications_active_rounded)
+            : Icons.notifications_none_rounded,
+        size: 16,
+        color: buttonColor,
+      ),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13, 
+          fontWeight: FontWeight.w600,
+          color: buttonColor,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        side: BorderSide(
+          color: buttonColor.withOpacity(0.5),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectReminderDateTime(BuildContext context, NotesProvider provider, NoteNode note) async {
+    final now = DateTime.now();
+    final DateTime? date = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null) return;
+
+    final TimeOfDay? time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null) return;
+
+    final reminderTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    if (reminderTime.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot set reminder in the past!')),
+      );
+      return;
+    }
+
+    provider.setNoteReminder(note.id, reminderTime);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Reminder set for ${DateFormat('MMM dd, hh:mm a').format(reminderTime)}'),
+      ),
+    );
+  }
+
+  void _showReminderOptionsMenu(BuildContext context, NotesProvider provider, NoteNode note) {
+    final RenderBox? button = context.findRenderObject() as RenderBox?;
+    if (button == null) return;
+    
+    final size = button.size;
+    final offset = button.localToGlobal(Offset.zero);
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx + size.width / 2,
+        offset.dy + size.height * 2.5,
+        offset.dx + size.width,
+        offset.dy + size.height * 3.5,
+      ),
+      items: const [
+        PopupMenuItem(value: 'edit', child: Text('Change Reminder')),
+        PopupMenuItem(value: 'delete', child: Text('Delete Reminder')),
+      ],
+      elevation: 8,
+    ).then((value) {
+      if (value == 'edit') {
+        _selectReminderDateTime(context, provider, note);
+      } else if (value == 'delete') {
+        provider.setNoteReminder(note.id, null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reminder deleted.')),
+        );
+      }
+    });
   }
 }

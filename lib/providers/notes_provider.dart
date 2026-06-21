@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/note_node.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 
 class NotesProvider extends ChangeNotifier {
   final StorageService _storageService = StorageService();
@@ -14,6 +15,14 @@ class NotesProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isTrashSelected = false;
   Timer? _debounceSaveTimer;
+  Timer? _reminderCheckTimer;
+  NoteNode? _activeAlarmNote;
+
+  NotesProvider() {
+    _startReminderCheckTimer();
+  }
+
+  NoteNode? get activeAlarmNote => _activeAlarmNote;
 
   Map<String, NoteNode> get notes => _notes;
   String? get selectedNoteId => _selectedNoteId;
@@ -409,6 +418,71 @@ class NotesProvider extends ChangeNotifier {
     }).toList();
   }
 
+  void _startReminderCheckTimer() {
+    _reminderCheckTimer?.cancel();
+    _reminderCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _checkReminders();
+    });
+  }
+
+  void _checkReminders() {
+    if (_notes.isEmpty) return;
+    
+    final now = DateTime.now();
+    for (final note in _notes.values) {
+      if (!note.isDeleted &&
+          note.reminderDateTime != null &&
+          !note.isReminderTriggered) {
+        if (now.isAfter(note.reminderDateTime!) || now.isAtSameMomentAs(note.reminderDateTime!)) {
+          // Trigger reminder
+          note.isReminderTriggered = true;
+          _activeAlarmNote = note;
+          
+          _storageService.saveNotes(_notes);
+          
+          NotificationService.showNotification(
+            'Reminder: ${note.title.trim().isEmpty ? "Untitled Note" : note.title}',
+            note.content.trim().isEmpty ? 'Reminder scheduled time reached.' : note.content,
+          );
+          NotificationService.playAlarm();
+          
+          notifyListeners();
+          break;
+        }
+      }
+    }
+  }
+
+  void setNoteReminder(String id, DateTime? dateTime) {
+    final note = _notes[id];
+    if (note != null) {
+      note.reminderDateTime = dateTime;
+      note.isReminderTriggered = false;
+      _saveAndNotify();
+    }
+  }
+
+  void dismissActiveAlarm() {
+    if (_activeAlarmNote != null) {
+      _activeAlarmNote = null;
+      NotificationService.stopAlarm();
+      notifyListeners();
+    }
+  }
+
+  void snoozeActiveAlarm(int minutes) {
+    if (_activeAlarmNote != null) {
+      final note = _activeAlarmNote!;
+      final snoozeTime = DateTime.now().add(Duration(minutes: minutes));
+      note.reminderDateTime = snoozeTime;
+      note.isReminderTriggered = false;
+      
+      _activeAlarmNote = null;
+      NotificationService.stopAlarm();
+      _saveAndNotify();
+    }
+  }
+
   // Debounce saving notes to disk
   void _saveAndNotify({bool debounced = false}) {
     notifyListeners();
@@ -426,6 +500,7 @@ class NotesProvider extends ChangeNotifier {
   @override
   void dispose() {
     _debounceSaveTimer?.cancel();
+    _reminderCheckTimer?.cancel();
     super.dispose();
   }
 }
