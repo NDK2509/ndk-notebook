@@ -159,9 +159,11 @@ class _NoteCardState extends State<_NoteCard> {
                 Row(
                   children: [
                     Icon(
-                      hasChildren
-                          ? Icons.folder_outlined
-                          : Icons.description_outlined,
+                      widget.note.isKanban
+                          ? Icons.view_kanban_outlined
+                          : (hasChildren
+                              ? Icons.folder_outlined
+                              : Icons.description_outlined),
                       size: 14,
                       color: isSelected
                           ? Theme.of(context).colorScheme.primary

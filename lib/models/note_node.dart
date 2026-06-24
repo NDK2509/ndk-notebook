@@ -13,6 +13,7 @@ class NoteNode {
   bool isExpanded; // Persists sidebar expand/collapse state
   DateTime? reminderDateTime;
   bool isReminderTriggered;
+  bool isKanban;
 
   NoteNode({
     required this.id,
@@ -29,6 +30,7 @@ class NoteNode {
     this.isExpanded = false,
     this.reminderDateTime,
     this.isReminderTriggered = false,
+    this.isKanban = false,
   })  : childIds = childIds ?? [],
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now() {
@@ -51,6 +53,7 @@ class NoteNode {
     bool? isExpanded,
     DateTime? reminderDateTime,
     bool? isReminderTriggered,
+    bool? isKanban,
   }) {
     return NoteNode(
       id: id ?? this.id,
@@ -67,6 +70,7 @@ class NoteNode {
       isExpanded: isExpanded ?? this.isExpanded,
       reminderDateTime: reminderDateTime ?? this.reminderDateTime,
       isReminderTriggered: isReminderTriggered ?? this.isReminderTriggered,
+      isKanban: isKanban ?? this.isKanban,
     );
   }
 
@@ -87,6 +91,7 @@ class NoteNode {
       'isExpanded': isExpanded,
       'reminderDateTime': reminderDateTime?.toIso8601String(),
       'isReminderTriggered': isReminderTriggered,
+      'isKanban': isKanban,
     };
   }
 
@@ -107,6 +112,7 @@ class NoteNode {
       isExpanded: json['isExpanded'] as bool? ?? false,
       reminderDateTime: json['reminderDateTime'] != null ? DateTime.parse(json['reminderDateTime'] as String) : null,
       isReminderTriggered: json['isReminderTriggered'] as bool? ?? false,
+      isKanban: json['isKanban'] as bool? ?? false,
     );
   }
 }

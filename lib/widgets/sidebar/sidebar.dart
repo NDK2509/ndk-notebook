@@ -175,19 +175,48 @@ class _SidebarState extends State<Sidebar> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                   ),
-                  // Create Root Note button
-                  IconButton(
-                    tooltip: 'New Root Note',
-                    onPressed: () {
-                      notesProvider.createRootNote();
-                    },
+                  // Create Root Note button (Note/Kanban)
+                  PopupMenuButton<String>(
+                    tooltip: 'New Node',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                     icon: Icon(
                       Icons.add_circle_outline_rounded,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     iconSize: 20,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    onSelected: (String value) {
+                      if (value == 'note') {
+                        notesProvider.createRootNote();
+                      } else if (value == 'kanban') {
+                        notesProvider.createRootNote(
+                          title: 'New Kanban Board',
+                          isKanban: true,
+                        );
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'note',
+                        child: Row(
+                          children: [
+                            Icon(Icons.description_outlined, size: 16),
+                            SizedBox(width: 8),
+                            Text('New Note', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'kanban',
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_kanban_outlined, size: 16),
+                            SizedBox(width: 8),
+                            Text('New Kanban Board', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

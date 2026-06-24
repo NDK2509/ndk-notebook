@@ -115,7 +115,12 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
     IconData noteIcon = Icons.description_outlined;
     Color iconColor;
     
-    if (freeze) {
+    if (widget.node.isKanban) {
+      noteIcon = Icons.view_kanban_rounded;
+      iconColor = isSelected
+          ? Theme.of(context).colorScheme.primary
+          : (isDark ? Colors.amberAccent : Colors.amber.shade700);
+    } else if (freeze) {
       noteIcon = Icons.ac_unit_rounded;
       iconColor = isDark ? Colors.lightBlueAccent : Colors.blue;
     } else if (ancient) {
@@ -255,10 +260,51 @@ class _NoteTreeItemState extends State<NoteTreeItem> {
                       children: [
                         // Create sub-note inline
                         Tooltip(
-                          message: 'Create Sub-note',
+                          message: 'Create Sub-note / Kanban',
                           child: GestureDetector(
-                            onTap: () {
-                              notesProvider.createSubNote(widget.node.id);
+                            onTapDown: (details) {
+                              final offset = details.globalPosition;
+                              showMenu<String>(
+                                context: context,
+                                position: RelativeRect.fromLTRB(
+                                  offset.dx,
+                                  offset.dy,
+                                  offset.dx + 40,
+                                  offset.dy + 40,
+                                ),
+                                items: const [
+                                  PopupMenuItem(
+                                    value: 'note',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.description_outlined, size: 16),
+                                        SizedBox(width: 8),
+                                        Text('Add Sub-note', style: TextStyle(fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'kanban',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.view_kanban_outlined, size: 16),
+                                        SizedBox(width: 8),
+                                        Text('Add Kanban Board', style: TextStyle(fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ).then((value) {
+                                if (value == 'note') {
+                                  notesProvider.createSubNote(widget.node.id);
+                                } else if (value == 'kanban') {
+                                  notesProvider.createSubNote(
+                                    widget.node.id,
+                                    title: 'New Kanban Board',
+                                    isKanban: true,
+                                  );
+                                }
+                              });
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 2.0),

@@ -77,7 +77,11 @@ class NotesProvider extends ChangeNotifier {
   }
 
   // Create a new Root Note
-  NoteNode createRootNote({String title = 'Untitled Note', String content = ''}) {
+  NoteNode createRootNote({
+    String title = 'Untitled Note',
+    String content = '',
+    bool isKanban = false,
+  }) {
     final newId = _uuid.v4();
     final position = getRootNotes().length;
     final newNode = NoteNode(
@@ -86,18 +90,28 @@ class NotesProvider extends ChangeNotifier {
       content: content,
       parentId: null,
       position: position,
+      isKanban: isKanban,
     );
 
     _notes[newId] = newNode;
     _selectedNoteId = newId;
     _isTrashSelected = false;
 
+    if (isKanban) {
+      _createDefaultKanbanColumns(newId);
+    }
+
     _saveAndNotify();
     return newNode;
   }
 
   // Create a Sub-note under a parent
-  NoteNode createSubNote(String parentId, {String title = 'Untitled Sub-note', String content = ''}) {
+  NoteNode createSubNote(
+    String parentId, {
+    String title = 'Untitled Sub-note',
+    String content = '',
+    bool isKanban = false,
+  }) {
     if (!_notes.containsKey(parentId)) {
       throw Exception('Parent note not found');
     }
@@ -112,6 +126,7 @@ class NotesProvider extends ChangeNotifier {
       content: content,
       parentId: parentId,
       position: position,
+      isKanban: isKanban,
     );
 
     _notes[newId] = newNode;
@@ -121,6 +136,11 @@ class NotesProvider extends ChangeNotifier {
 
     _selectedNoteId = newId;
     _isTrashSelected = false;
+
+    if (isKanban) {
+      _createDefaultKanbanColumns(newId);
+    }
+
     _saveAndNotify();
     return newNode;
   }
@@ -338,6 +358,43 @@ class NotesProvider extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  // Helper to create default columns when initializing Kanban board
+  void _createDefaultKanbanColumns(String kanbanId) {
+    final columns = ['Todo', 'Doing', 'Review', 'Done'];
+    for (int i = 0; i < columns.length; i++) {
+      final colId = _uuid.v4();
+      final colNode = NoteNode(
+        id: colId,
+        title: columns[i],
+        content: '',
+        parentId: kanbanId,
+        position: i,
+      );
+      _notes[colId] = colNode;
+      _notes[kanbanId]!.childIds.add(colId);
+    }
+  }
+
+  // Move card to a specific column and optionally position it next to a target card
+  void moveCardToColumnAndPosition(String cardId, String targetColumnId, {String? targetCardId}) {
+    final card = _notes[cardId];
+    final column = _notes[targetColumnId];
+    if (card == null || column == null) return;
+
+    // 1. Move to the new column parent
+    moveNote(cardId, targetColumnId);
+
+    // 2. If a specific target card is provided, position it right before that card
+    if (targetCardId != null && targetCardId != cardId) {
+      final siblings = getChildNotes(targetColumnId);
+      final oldIndex = siblings.indexWhere((n) => n.id == cardId);
+      final targetIndex = siblings.indexWhere((n) => n.id == targetCardId);
+      if (oldIndex != -1 && targetIndex != -1) {
+        reorderSiblingNotes(targetColumnId, oldIndex, targetIndex);
+      }
+    }
+  }
+
   // Check if a node is a descendant of another node
   bool _isDescendant(String parentId, String checkId) {
     if (parentId == checkId) return true;
@@ -375,7 +432,7 @@ class NotesProvider extends ChangeNotifier {
 
     final children = parent.childIds
         .map((id) => _notes[id])
-        .where((node) => node != null && !node!.isDeleted)
+        .where((node) => node != null && !node.isDeleted)
         .cast<NoteNode>()
         .toList();
     
