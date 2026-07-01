@@ -8,6 +8,14 @@ PROJECT_ROOT="$(pwd)"
 BUILD_OUTPUT_DIR="$PROJECT_ROOT/build/packages"
 TEMP_BUILD_DIR="$PROJECT_ROOT/build/packaging_temp"
 
+# Extract version from pubspec.yaml
+VERSION=$(grep '^version:' "$PROJECT_ROOT/pubspec.yaml" | sed 's/version:[[:space:]]*//' | cut -d'+' -f1 | tr -d '\r' | tr -d '"' | tr -d "'")
+if [ -z "$VERSION" ]; then
+    VERSION="1.0.0"
+fi
+echo "Version to build: $VERSION"
+
+
 echo "=================================================="
 echo "    Packaging NDK Notebook (.deb & .AppImage)     "
 echo "=================================================="
@@ -75,7 +83,7 @@ EOF
 # Create Debian control file
 cat << EOF > "$DEB_DIR/DEBIAN/control"
 Package: $APP_NAME
-Version: 1.0.0
+Version: $VERSION
 Architecture: amd64
 Maintainer: NDK Developer <ndk@example.com>
 Depends: libgtk-3-0, liblzma5, libglib2.0-0
@@ -84,8 +92,8 @@ Description: NDK Notebook
 EOF
 
 # Build DEB
-dpkg-deb --build "$DEB_DIR" "$BUILD_OUTPUT_DIR/${APP_NAME}_1.0.0_amd64.deb"
-echo "Success: Debian package created at $BUILD_OUTPUT_DIR/${APP_NAME}_1.0.0_amd64.deb"
+dpkg-deb --build "$DEB_DIR" "$BUILD_OUTPUT_DIR/${APP_NAME}_${VERSION}_amd64.deb"
+echo "Success: Debian package created at $BUILD_OUTPUT_DIR/${APP_NAME}_${VERSION}_amd64.deb"
 
 
 # 4. Build AppImage
@@ -140,8 +148,8 @@ fi
 
 # Build AppImage
 echo "Generating AppImage using appimagetool..."
-ARCH=x86_64 "$APPIMAGE_TOOL" "$APPDIR" "$BUILD_OUTPUT_DIR/NDK_Notebook-x86_64.AppImage"
-echo "Success: AppImage package created at $BUILD_OUTPUT_DIR/NDK_Notebook-x86_64.AppImage"
+ARCH=x86_64 "$APPIMAGE_TOOL" "$APPDIR" "$BUILD_OUTPUT_DIR/NDK_Notebook-${VERSION}-x86_64.AppImage"
+echo "Success: AppImage package created at $BUILD_OUTPUT_DIR/NDK_Notebook-${VERSION}-x86_64.AppImage"
 
 # Clean up temp
 rm -rf "$TEMP_BUILD_DIR"
